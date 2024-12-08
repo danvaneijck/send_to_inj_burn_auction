@@ -1,11 +1,13 @@
+use schemars::JsonSchema;
+
 use crate::state::{load_config, save_config, Config, AssetInfo};
 use crate::msg::{InstantiateMsg, ExecuteMsg, QueryMsg};
 use cosmwasm_std::{
     entry_point, to_json_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdError, StdResult, WasmMsg, SubMsg
+    Response, StdError, StdResult, WasmMsg, Uint128
 };
 use cw20::{Cw20ReceiveMsg};
-
+use cw20_base::msg::{ExecuteMsg as Cw20ExecuteMsg};
 use injective_cosmwasm::{InjectiveMsgWrapper, InjectiveRoute, InjectiveMsg};
 use injective_cosmwasm::exchange::subaccount::{checked_address_to_subaccount_id};
 use injective_cosmwasm::exchange::types::{SubaccountId};
@@ -13,11 +15,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::state::Asset;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub enum LocalExecuteMsg {
-    RedeemAndSend {
-        recipient: String,
-        submsg: Option<SubMsg<InjectiveMsgWrapper>>,
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub enum AdapterExecuteMsg {
+    Receive {
+        sender: String,
+        amount: Uint128,
+        msg: Option<Binary>,
     },
 }
 
@@ -185,41 +188,47 @@ pub fn send_to_burn_auction(
         messages.push(transfer_msg);
     } else {
         // CW20 token handling
+        let cw20_address = match &asset_info {
+            AssetInfo::Token { contract_addr } => contract_addr.to_string(),
+            AssetInfo::NativeToken { .. } => {
+                return Err(StdError::generic_err("Expected token address"))
+            }
+        };
+
         let subaccount_id = checked_address_to_subaccount_id(&env.contract.address, 1);
         let converted_native_denom = format!(
             "factory/{}/{}/{}",
             cw20_adapter_address,
             env.contract.address.to_string(),
-            match &asset_info {
-                AssetInfo::Token { contract_addr } => contract_addr.to_string(),
-                AssetInfo::NativeToken { .. } => {
-                    return Err(StdError::generic_err("Expected token address"))
-                }
-            }
+            cw20_address
         );
 
         let adapter_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: cw20_adapter_address,
-            msg: to_json_binary(&LocalExecuteMsg::RedeemAndSend {
-                recipient: env.contract.address.to_string(),
-                submsg: Some(SubMsg::<InjectiveMsgWrapper>::new(
-                    CosmosMsg::Custom(InjectiveMsgWrapper {
-                        route: InjectiveRoute::Exchange,
-                        msg_data: InjectiveMsg::Deposit {
-                            sender: env.contract.address.clone(),
-                            subaccount_id: subaccount_id.clone(),
-                            amount: Coin {
-                                denom: converted_native_denom.clone(),
-                                amount: burn_amount,
-                            },
-                        },
-                    }),
-                )),
+            contract_addr: cw20_address.to_string(), 
+            msg: to_json_binary(&Cw20ExecuteMsg::Send {
+                contract: cw20_adapter_address.to_string(),
+                amount: burn_amount,                      
+                msg: Binary::default(),                   
             })?,
             funds: vec![],
         });
         messages.push(adapter_msg);
+        
+        // After conversion, prepare the deposit message
+        let deposit_msg = CosmosMsg::Custom(InjectiveMsgWrapper {
+            route: InjectiveRoute::Exchange,
+            msg_data: InjectiveMsg::Deposit {
+                sender: env.contract.address.clone(),
+                subaccount_id: subaccount_id.clone(),
+                amount: Coin {
+                    denom: converted_native_denom.clone(),
+                    amount: burn_amount,
+                },
+            },
+        });
+        messages.push(deposit_msg);
 
+        // Transfer to the burn auction sub account
         let transfer_msg = CosmosMsg::Custom(InjectiveMsgWrapper {
             route: InjectiveRoute::Exchange,
             msg_data: InjectiveMsg::ExternalTransfer {
