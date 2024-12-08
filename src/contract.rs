@@ -223,9 +223,8 @@ pub fn send_to_burn_auction(
 
         let subaccount_id = checked_address_to_subaccount_id(&env.contract.address, 1);
         let converted_native_denom = format!(
-            "factory/{}/{}/{}",
+            "factory/{}/{}",
             cw20_adapter_address,
-            env.contract.address.to_string(),
             cw20_address
         );
 
