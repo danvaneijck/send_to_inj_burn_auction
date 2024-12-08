@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
-    use cosmwasm_std::{Addr, MessageInfo, Binary, from_json};
+    use cosmwasm_std::{Addr, MessageInfo, Binary, from_json, Coin};
     use cw20::{Cw20ReceiveMsg};
 
     use crate::msg::InstantiateMsg;
@@ -95,7 +95,10 @@ mod tests {
     
         let admin_info = MessageInfo {
             sender: Addr::unchecked("inj1q2m26a7jdzjyfdn545vqsude3zwwtfrdap5jgz"),
-            funds: vec![],
+            funds: vec![Coin {
+                denom: "inj".to_string(),
+                amount: 1000u128.into(),
+            }],
         };
     
         // Instantiate the contract

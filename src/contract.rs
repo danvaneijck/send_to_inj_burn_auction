@@ -86,6 +86,7 @@ fn receive_cw20(
     send_to_burn_auction(
         deps,
         env,
+        info,
         Asset {
             info: AssetInfo::Token {
                 contract_addr: contract_addr.to_string(),
@@ -105,7 +106,7 @@ fn receive_cw20(
 pub fn send_native(
     deps: DepsMut,
     env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     asset: Asset
 ) -> StdResult<Response<InjectiveMsgWrapper>> {
     let mut messages: Vec<CosmosMsg<InjectiveMsgWrapper>> = vec![];
@@ -117,6 +118,7 @@ pub fn send_native(
     send_to_burn_auction(
         deps,
         env,
+        info,
         asset,
         &mut messages,
     )?;
@@ -146,6 +148,7 @@ fn update_admin(deps: DepsMut, info: MessageInfo, admin: String) -> StdResult<Re
 pub fn send_to_burn_auction(
     deps: DepsMut,
     env: Env,
+    info: MessageInfo,
     asset: Asset,
     messages: &mut Vec<CosmosMsg<InjectiveMsgWrapper>>,
 ) -> StdResult<()> {
@@ -158,6 +161,29 @@ pub fn send_to_burn_auction(
     let asset_info = asset.info;
 
     if asset_info.is_native_token() {
+
+        if info.funds.is_empty() {
+            return Err(StdError::generic_err("No funds provided"));
+        }
+    
+        let provided_funds = info.funds.iter().find(|coin| coin.denom == asset_info.to_string());
+        match provided_funds {
+            Some(coin) => {
+                if coin.amount != burn_amount {
+                    return Err(StdError::generic_err(format!(
+                        "Mismatched fund amount: expected {}, provided {}",
+                        burn_amount, coin.amount
+                    )));
+                }
+            }
+            None => {
+                return Err(StdError::generic_err(format!(
+                    "Mismatched denomination: expected {}, but no matching funds provided",
+                    asset_info.to_string()
+                )));
+            }
+        }
+
         // Native token handling
         let subaccount_id = checked_address_to_subaccount_id(&env.contract.address, 1);
         let deposit_msg = CosmosMsg::Custom(InjectiveMsgWrapper {
