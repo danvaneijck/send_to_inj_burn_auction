@@ -6,8 +6,7 @@ use cosmwasm_std::{
     entry_point, to_json_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     Response, StdError, StdResult, WasmMsg, Uint128
 };
-use cw20::{Cw20ReceiveMsg};
-use cw20_base::msg::{ExecuteMsg as Cw20ExecuteMsg};
+use cw20::{Cw20ReceiveMsg, Cw20ExecuteMsg};
 use injective_cosmwasm::{InjectiveMsgWrapper, InjectiveRoute, InjectiveMsg};
 use injective_cosmwasm::exchange::subaccount::{checked_address_to_subaccount_id};
 use injective_cosmwasm::exchange::types::{SubaccountId};
