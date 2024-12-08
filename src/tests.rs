@@ -123,6 +123,10 @@ mod tests {
     
         // Assert that the appropriate messages were created
         assert_eq!(res.messages.len(), 2); // Deposit and Transfer messages
+
+        // for (i, msg) in res.messages.iter().enumerate() {
+        //     println!("Message {}: {:?}", i + 1, msg);
+        // }
     }
 
     #[test]
@@ -179,6 +183,10 @@ mod tests {
 
         // Assert that the appropriate messages were created
         assert_eq!(res.messages.len(), 3); // Deposit and Transfer messages for converted CW20 tokens
+
+        // for (i, msg) in res.messages.iter().enumerate() {
+        //     println!("Message {}: {:?}", i + 1, msg);
+        // }
     }
 
     #[test]
