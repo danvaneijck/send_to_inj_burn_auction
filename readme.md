@@ -1,7 +1,7 @@
 # Send to Injective Burn Auction Contract
 
 This repository contains a CosmWasm smart contract that facilitates sending tokens (both native and CW20) to the Injective burn auction subaccount. The contract provides an interface for handling native token transfers and CW20 token operations, ensuring proper routing to the designated burn auction subaccount.
----
+
 
 The contract requires the contract address of the INJ CW20 Adapter contract.
 Source code: https://github.com/InjectiveLabs/cw20-adapter
